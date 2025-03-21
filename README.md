@@ -1,15 +1,36 @@
-# Elysia with Bun runtime
+# Technical Assessment
 
 ## Getting Started
-To get started with this template, simply paste this command into your terminal:
+
+### Installation
+
+_To run the web application run the following commands._
+
 ```bash
-bun create elysia ./elysia-example
+bun install
+```
+
+_Copy and fill env file._
+
+```bash
+touch .env
+cat .env.example >> .env
+```
+
+### Migrations
+
+_Run prisma migrations._
+
+```bash
+bunx prisma migrate dev
 ```
 
 ## Development
+
 To start the development server run:
+
 ```bash
 bun run dev
 ```
 
-Open http://localhost:3000/ with your browser to see the result.
+Open http://localhost:8080/docs with your browser to see the result.
