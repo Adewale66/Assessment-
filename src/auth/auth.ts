@@ -5,6 +5,9 @@ import jwt from '@elysiajs/jwt';
 
 const AuthController = new Elysia({
   prefix: '/auth',
+  detail: {
+    tags: ['auth'],
+  },
 })
   .decorate('service', new AuthService())
   .use(

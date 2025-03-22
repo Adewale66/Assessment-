@@ -4,6 +4,14 @@ import db from '../lib/db';
 
 const UserController = new Elysia({
   prefix: '/user',
+  detail: {
+    tags: ['user'],
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
+  },
 })
   .use(
     jwt({

@@ -9,6 +9,17 @@ const app = new Elysia()
   .use(
     swagger({
       path: '/docs',
+      documentation: {
+        components: {
+          securitySchemes: {
+            bearerAuth: {
+              type: 'http',
+              scheme: 'bearer',
+              bearerFormat: 'JWT',
+            },
+          },
+        },
+      },
     }),
   )
   .group('/api', (app) => app.use(AuthController).use(UserController))
