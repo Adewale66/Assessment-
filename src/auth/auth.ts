@@ -31,6 +31,26 @@ const AuthController = new Elysia({
     },
     {
       body: 'auth.sign',
+      error({ code, error: err }) {
+        if (code == 'VALIDATION') {
+          const errors = err as ValidationError;
+          const validationErrors = errors.all.map((e) => {
+            if (e.summary !== undefined) {
+              return {
+                field: e.path.slice(1),
+                message: e.message,
+              };
+            }
+          });
+
+          return error(422, validationErrors);
+        }
+        console.log(code);
+        return error(500, {
+          success: false,
+          message: 'Something went wrong. Try again later',
+        });
+      },
     },
   )
   .post(
