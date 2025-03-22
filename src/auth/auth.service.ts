@@ -67,4 +67,24 @@ export default class AuthService {
       },
     };
   }
+
+  resetPassword() {
+    return {
+      otp: '143258',
+    };
+  }
+
+  verifyToken(token: string) {
+    if (token !== '143258') {
+      return error(400, {
+        status: false,
+        message: 'Invalid OTP token',
+      });
+    }
+
+    return {
+      success: true,
+      message: 'Password reset',
+    };
+  }
 }

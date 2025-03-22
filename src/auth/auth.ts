@@ -15,24 +15,21 @@ const AuthController = new Elysia({
     }),
   )
   .use(AuthModel)
-  .get('/reset-password', () => {
-    return {
-      otp: '143258',
-    };
+  .get('/reset-password', ({ service }) => {
+    return service.resetPassword();
   })
-  .get('/reset-password/:token', ({ params: { token } }) => {
-    if (token !== '143258') {
-      return error(400, {
-        status: false,
-        message: 'Invalid OTP token',
-      });
-    }
-
-    return {
-      success: true,
-      message: 'Password reset',
-    };
+  .get('/reset-password/:token', ({ params: { token }, service }) => {
+    return service.verifyToken(token);
   })
+  .post(
+    '/signin',
+    ({ service, jwt, body }) => {
+      return service.login({ ...body, jwt });
+    },
+    {
+      body: 'auth.sign',
+    },
+  )
   .post(
     '/signup',
     ({ service, body }) => {
@@ -66,15 +63,6 @@ const AuthController = new Elysia({
           message: 'Something went wrong. Try again later',
         });
       },
-    },
-  )
-  .post(
-    '/signin',
-    ({ service, jwt, body }) => {
-      return service.login({ ...body, jwt });
-    },
-    {
-      body: 'auth.sign',
     },
   );
 
