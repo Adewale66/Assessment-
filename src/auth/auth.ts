@@ -1,83 +1,80 @@
-import { Elysia, error, t } from 'elysia';
-import { authDto } from './auth.dto';
+import { Elysia, error, t, ValidationError } from 'elysia';
+import { AuthModel } from './auth.dto';
 import AuthService from './auth.service';
 import jwt from '@elysiajs/jwt';
 
 const AuthController = new Elysia({
   prefix: '/auth',
 })
-  .decorate('auth', new AuthService())
+  .decorate('service', new AuthService())
   .use(
     jwt({
       name: 'jwt',
-      secret: process.env.JWT_SECRET as string,
+      secret: Bun.env.JWT_SECRET!,
       expr: '1d',
     }),
   )
+  .use(AuthModel)
   .get('/reset-password', () => {
     return {
       otp: '143258',
     };
   })
-  .get(
-    '/reset-password/:token',
-    ({ params }) => {
-      if (params.token !== '143258') {
-        return error(400, {
-          status: false,
-          message: 'Invalid OTP token',
-        });
-      }
+  .get('/reset-password/:token', ({ params: { token } }) => {
+    if (token !== '143258') {
+      return error(400, {
+        status: false,
+        message: 'Invalid OTP token',
+      });
+    }
 
-      return {
-        success: true,
-        message: 'Password reset',
-      };
-    },
-    {
-      params: t.Object({
-        token: t.String(),
-      }),
-    },
-  )
+    return {
+      success: true,
+      message: 'Password reset',
+    };
+  })
   .post(
     '/signup',
-    async ({ auth, body, set }) => {
-      const res = await auth.registerUser(body);
-      if (!res) {
-        return error(400, {
-          success: false,
-          message: 'User already exists',
-        });
-      }
-      set.status = 201;
-      return res;
+    ({ service, body }) => {
+      return service.registerUser(body);
     },
     {
-      body: authDto,
+      body: 'auth.sign',
+      error({ code, error: err }) {
+        if ((code as unknown) === 'P2002') {
+          return error(400, {
+            success: false,
+            message: 'User already exists',
+          });
+        }
+        if (code == 'VALIDATION') {
+          const errors = err as ValidationError;
+          const validationErrors = errors.all.map((e) => {
+            if (e.summary !== undefined) {
+              return {
+                field: e.path.slice(1),
+                message: e.message,
+              };
+            }
+          });
+
+          return error(422, validationErrors);
+        }
+        console.log(code);
+        return error(500, {
+          success: false,
+          message: 'Something went wrong. Try again later',
+        });
+      },
     },
   )
   .post(
     '/signin',
-    async ({ auth, jwt, body }) => {
-      const user = await auth.login(body);
-      if (!user) {
-        return error(401, {
-          success: false,
-          message: 'Invalid email or passsword',
-        });
-      }
-      const access_token = await jwt.sign(user);
-      return {
-        success: true,
-        message: 'Signed in successfully',
-        data: {
-          access_token,
-        },
-      };
+    ({ service, jwt, body }) => {
+      return service.login({ ...body, jwt });
     },
     {
-      body: authDto,
+      body: 'auth.sign',
     },
   );
 

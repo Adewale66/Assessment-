@@ -8,61 +8,50 @@ const UserController = new Elysia({
   .use(
     jwt({
       name: 'jwt',
-      secret: process.env.JWT_SECRET as string,
+      secret: Bun.env.JWT_SECRET!,
       expr: '1d',
     }),
   )
-  .derive({ as: 'scoped' }, async ({ jwt, headers }) => {
+  .derive({ as: 'scoped' }, async ({ jwt, headers, set }) => {
     const header = headers['authorization'];
-    const Auth: { user: { email: string } | null } = {
-      user: null,
-    };
-    if (header) {
-      const token = header.split(' ')[1];
-      const verified = await jwt.verify(token);
 
-      if (verified) {
-        const user = await db.user.findFirst({
-          where: {
-            email: verified.email as string,
-          },
-          select: {
-            email: true,
-          },
-        });
-
-        Auth.user = user;
-      }
+    if (!header) {
+      set.status = 401;
+      throw new Error('Access token is missing');
     }
-    return { Auth };
+
+    const token = header.split(' ')[1];
+    const payload = await jwt.verify(token);
+
+    if (!payload) {
+      set.status = 403;
+      throw new Error('Access token is invalid');
+    }
+
+    const email = payload.sub;
+    const user = await db.user.findUnique({
+      where: {
+        email,
+      },
+      select: {
+        email: true,
+        id: true,
+        createdAt: true,
+      },
+    });
+
+    return { user };
   })
-  .macro(({ onBeforeHandle }) => ({
-    isSignIn(value: boolean) {
-      onBeforeHandle(({ Auth, error }) => {
-        if (!Auth?.user || !Auth.user)
-          return error(401, {
-            success: false,
-            message: 'Unauthorized',
-          });
-      });
-    },
-  }))
-  .get(
+  .get('/me', ({ user }) => {
+    return {
+      success: true,
+      message: 'Profile retrieved successfully',
+      data: user,
+    };
+  })
+  .patch(
     '/me',
-    ({ Auth: { user } }) => {
-      return {
-        success: true,
-        message: 'Profile retrieved successfully',
-        data: user,
-      };
-    },
-    {
-      isSignIn: true,
-    },
-  )
-  .post(
-    '/',
-    async ({ Auth: { user }, body }) => {
+    async ({ user, body }) => {
       const newPassword = await Bun.password.hash(body.password);
       await db.user.update({
         where: {
@@ -80,7 +69,6 @@ const UserController = new Elysia({
       };
     },
     {
-      isSignIn: true,
       body: t.Object({
         email: t.String({
           format: 'email',
